@@ -54,7 +54,14 @@ CKEDITOR.dialog.add('mathjax', function (editor) {
   function existPlaceholder (latex) {
     return latex.trim().indexOf('\\placeholder') > -1;
   }
-  console.error('localStorage.lang=', localStorage.lang)
+  var currentLatex = ''
+  const callback = function (event) {
+    const { type, text } = JSON.parse(event.data)
+    if (type === 'return-current-latex') {
+      currentLatex = text
+    }
+  }
+  window.addEventListener('message', callback, false);
   return {
     title: localeObj[navigator.language]['公式编辑器'],
     minWidth: width,
@@ -70,37 +77,29 @@ CKEDITOR.dialog.add('mathjax', function (editor) {
         setup: function (widget) {
           var iframeWindow = getIFrame.call(this).contentWindow;
           // iframeWindow.parent.currentLatex = CKEDITOR.plugins.mathjax.trim(widget.data.math);
-
-          console.log('current latex:' + CKEDITOR.plugins.mathjax.trim(widget.data.math));
           setTimeout(() => {
             iframeWindow.postMessage(JSON.stringify({
               type: 'init-data',
               text: CKEDITOR.plugins.mathjax.trim(widget.data.math)
             }), '*');
-          }, 200);
+          }, 500);
           // 修复bug #5814,#5481 在某些情况下,在chrome中会出现公式编辑器页面显示空白(iframe的src会变成about:blank)
           iframeWindow.location.replace(getIFrameSrc());
         },
         commit: function (widget) {
-          const callback = function (event) {
-            console.error('kityformula.html=>', event);
-            const { type, text } = JSON.parse(event.data)
-            if (type === 'return-current-latex') {
-              var latex = text
-              if (existPlaceholder(text)) {
-                alert(localeObj[localeMach(localStorage.lang)]['公式不完整']);
-              } else {
-                widget.setData('math', '\\(' + latex + '\\)');
-                window.removeEventListener('message', callback)
-              }
-            }
+          if (existPlaceholder(currentLatex)) {
+            alert(localeObj[localeMach(localStorage.lang)]['公式不完整']);
+          } else {
+            widget.setData('math', currentLatex);
+            currentLatex = '';
           }
-          window.addEventListener('message', callback, false);
-          getIFrame.call(this).contentWindow.postMessage(JSON.stringify({ type: 'get-current-latex' }), '*')
         }
       }]
     }],
     onOk: function () {
+      if (existPlaceholder(currentLatex)) {
+        return false;
+      }
       return true;
     }
   };
