@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html style="overflow: hidden;">
 
 <head>
   <title>公式编辑器</title>
@@ -69,6 +69,8 @@
       if (!window.locale) {
         window.locale = 'zh-cn'
       }
+      var initLatex = '';
+      var hasLoad = undefined;
       // 首先加载语言文件
       $.getScript("i18n/" + localeMach(navigator.language.toLowerCase()) + "/index.js", function () {
         // 后续加载 kityformula 所需的js文件
@@ -92,10 +94,13 @@
               };
       
               window.load = function (latex) {
-                kfe.execCommand("render", latex);
+                kfe.execCommand("render", latex || "\\placeholder");
                 kfe.execCommand("focus");
                 kfe.execCommand("preview");
               };
+              if(hasLoad === false){
+                window.load(initLatex);
+              }
             });
       
             factory.preview(function (latex) {
@@ -116,7 +121,14 @@
           window.addEventListener('message',function(event){
             const {text, type} = JSON.parse(event.data) 
             if(type === 'init-data'){
-              load(text || "\\placeholder")
+              var nextText = text ;
+              if(!!load){
+                load(nextText);
+                hasLoad = true;
+              }else{
+                initLatex = nextText;
+                hasLoad = false;
+              }
             }
           }, false);
         })
